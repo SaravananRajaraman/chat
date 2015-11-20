@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Chat</title>    
+     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <!--<script src="http://localhost:3110/socket.io/socket.io.js"></script> -->
+     <script src="https://chat3110.herokuapp.com/socket.io/socket.io.js"></script> 
+    <!-- <script src="http://52.4.117.135:3110/socket.io/socket.io.js"></script> -->
+</head>
+<body>
+	<div>
+		<h1> Chat  </h1>
+		<span class="notification"></span>
+	</div><hr>
+	<div class="section">
+
+	<label>
+		Select roomId :	
+	<select>
+		<option value="1">1</option>
+		<option value="2">2</option>
+		<option value="3">3</option>
+		<option value="4">4</option>
+		<option value="5">5</option>
+		<option value="6">6</option>
+	</select>	
+	</label>
+	<label>
+		userId :	
+		<input type="text" class="userId" placeholder="anonymous"/>	
+	</label> 	
+		<button class="join">Join</button>
+	</div>	
+	
+	<div class="room" style="display:none">
+		<span class="roomInfo"></span>
+		<button class="leave"> Leave </button>
+		<ul id="chat"> 
+			
+		</ul>
+		<div>
+			<textarea id="chatMsg"> </textarea>
+			<ul id="availUser" style="float:right">
+
+			</ul>
+		</div>
+	</div>
+	<script type="text/javascript">
+    	$(function(){
+    		// var serverUrl = 'http://localhost:3110/';
+    		$(".userId").val(Math.ceil(Math.random()*10*new Date()));
+    		
+			var serverUrl = 'https://chat3110.herokuapp.com/';
+    		// var serverUrl = "http://52.4.117.135:3110/";
+   			var socket = io.connect(serverUrl),    		
+    			roomId = $("select").val() || "1",
+				userId = $(".userId").val();		
+			
+
+			$(".join").on('click',function(){
+				roomId = $("select").val() || "1";	
+				userId = $(".userId").val();
+
+				socket.emit("join", {
+					userId: userId,
+					roomId:roomId 
+				});
+				$(".roomInfo").text("Hi "+ userId +" welcome to "+roomId+" room");
+				$(".section").hide();
+				$(".room").show();
+			});
+			$(".leave").on('click',function(){
+				$(".section").show();
+				$(".room").hide();
+				 $("#chat").empty();
+				socket.emit("leave", {                    
+                   	userId: userId,
+					roomId:roomId 
+            	});
+			});
+
+			$("#chatMsg").on("keyup", function(event){
+	            if(event.keyCode != 13) return;
+	            var message = $('#chatMsg').val();
+	            var msgob = {
+	                'userId': userId,
+	                'message': message,
+                	'roomId': roomId	                
+	            };
+	            socket.emit('chat', msgob);
+
+	            var dom = "<li><b>" + userId + " : </b>" + message + "</li>";
+		        $("#chat").append(dom);	            	            
+	            $('#chatMsg').val("");
+	        });
+
+		    socket.on('joined', function(data) {
+		    	console.info("Join :",data);
+		    	var user = data.userId;
+		    	var roomId = data.roomId;
+		        console.log(user +" join in "+  roomId);
+				$(".notification").text(user +' is join in '+ roomId).fadeIn(500).delay(2000).fadeOut(500);
+
+				$("#availUser").empty();
+				for(var x=0; x<data.roomMember.length;x++){
+					$("#availUser").append("<li>"+data.roomMember[x]+"</li>");
+				}
+
+
+		    });
+
+		    socket.on('leave', function(data) {                                           
+		    	console.info("leave :",data);
+                var user = data.userId;
+				var roomId = data.roomId;
+                console.log(user +' is goes to offline');                      
+                $(".notification").text(user +' is leave '+ roomId +' room').fadeIn(500).delay(2000).fadeOut(500);
+
+
+				$("#availUser").empty();
+				for(var x=0; x<data.roomMember.length;x++){
+					$("#availUser").append("<li>"+data.roomMember[x]+"</li>");
+				}
+            });  
+
+		    socket.on('chat', function(data) {	
+		    	console.info("chat :",data);
+	    		console.log(data);	        
+		        var dom = "<li><b>" + data.userId + " : </b>" + data.message + "</li>";
+		        $("#chat").append(dom);
+		    });
+
+			//for dev
+			socket.on('disconnect', function () {
+				alert("Server connection lost, Please try again later");
+				$(".section").show();
+				$(".room").hide();
+				$("#chat").empty();
+			});
+    	});
+	</script>
+</body>
+</html>
